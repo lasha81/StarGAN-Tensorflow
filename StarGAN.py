@@ -178,30 +178,62 @@ class StarGAN(object) :
     def build_model(self):
         self.lr = tf.placeholder(tf.float32, name='learning_rate')
 
-        """ Input Image"""
-        Image_data_class = ImageData(load_size=self.img_size, channels=self.img_ch, data_path=self.dataset_path, selected_attrs=self.selected_attrs, augment_flag=self.augment_flag)
-        Image_data_class.preprocess()
+        if self.dataset_name == "celebA":
+            """ Input Image"""
+            Image_data_class = ImageData(load_size=self.img_size, channels=self.img_ch, data_path=self.dataset_path, selected_attrs=self.selected_attrs, augment_flag=self.augment_flag)
+            Image_data_class.preprocess()
 
-        train_dataset_num = len(Image_data_class.train_dataset)
-        test_dataset_num = len(Image_data_class.test_dataset)
+            train_dataset_num = len(Image_data_class.train_dataset)
+            test_dataset_num = len(Image_data_class.test_dataset)
 
-        train_dataset = tf.data.Dataset.from_tensor_slices((Image_data_class.train_dataset, Image_data_class.train_dataset_label, Image_data_class.train_dataset_fix_label))
-        test_dataset = tf.data.Dataset.from_tensor_slices((Image_data_class.test_dataset, Image_data_class.test_dataset_label, Image_data_class.test_dataset_fix_label))
+            train_dataset = tf.data.Dataset.from_tensor_slices((Image_data_class.train_dataset, Image_data_class.train_dataset_label, Image_data_class.train_dataset_fix_label))
+            test_dataset = tf.data.Dataset.from_tensor_slices((Image_data_class.test_dataset, Image_data_class.test_dataset_label, Image_data_class.test_dataset_fix_label))
 
-        gpu_device = '/gpu:0'
-        train_dataset = train_dataset.\
-            apply(shuffle_and_repeat(train_dataset_num)).\
-            apply(map_and_batch(Image_data_class.image_processing, self.batch_size, num_parallel_batches=8, drop_remainder=True)).\
-            apply(prefetch_to_device(gpu_device, self.batch_size))
+            gpu_device = '/gpu:0'
+            train_dataset = train_dataset.\
+                apply(shuffle_and_repeat(train_dataset_num)).\
+                apply(map_and_batch(Image_data_class.image_processing, self.batch_size, num_parallel_batches=8, drop_remainder=True)).\
+                apply(prefetch_to_device(gpu_device, self.batch_size))
 
-        test_dataset = test_dataset.\
-            apply(shuffle_and_repeat(test_dataset_num)).\
-            apply(map_and_batch(Image_data_class.image_processing, self.batch_size, num_parallel_batches=8, drop_remainder=True)).\
-            apply(prefetch_to_device(gpu_device, self.batch_size))
+            test_dataset = test_dataset.\
+                apply(shuffle_and_repeat(test_dataset_num)).\
+                apply(map_and_batch(Image_data_class.image_processing, self.batch_size, num_parallel_batches=8, drop_remainder=True)).\
+                apply(prefetch_to_device(gpu_device, self.batch_size))
 
-        train_dataset_iterator = train_dataset.make_one_shot_iterator()
-        test_dataset_iterator = test_dataset.make_one_shot_iterator()
+            train_dataset_iterator = train_dataset.make_one_shot_iterator()
+            test_dataset_iterator = test_dataset.make_one_shot_iterator()
 
+        if self.dataset_name == "genregan":
+            """ Input Image"""
+            Music_data_class = MusicData(load_size=self.img_size, channels=self.img_ch, data_path=self.dataset_path,
+                                         selected_attrs=self.selected_attrs, augment_flag=self.augment_flag)
+            Music_data_class.preprocess()
+
+            train_dataset_num = len(Music_data_class.train_dataset)
+            test_dataset_num = len(Music_data_class.test_dataset)
+
+            train_dataset = tf.data.Dataset.from_tensor_slices((Music_data_class.train_dataset,
+                                                                Music_data_class.train_dataset_label,
+                                                                Music_data_class.train_dataset_fix_label))
+            test_dataset = tf.data.Dataset.from_tensor_slices((Music_data_class.test_dataset,
+                                                               Music_data_class.test_dataset_label,
+                                                               Music_data_class.test_dataset_fix_label))
+
+            gpu_device = '/gpu:0'
+            train_dataset = train_dataset. \
+                apply(shuffle_and_repeat(train_dataset_num)). \
+                apply(map_and_batch(Music_data_class.midi_processing, self.batch_size, num_parallel_batches=8,
+                                    drop_remainder=True)). \
+                apply(prefetch_to_device(gpu_device, self.batch_size))
+
+            test_dataset = test_dataset. \
+                apply(shuffle_and_repeat(test_dataset_num)). \
+                apply(map_and_batch(Music_data_class.midi_processing, self.batch_size, num_parallel_batches=8,
+                                    drop_remainder=True)). \
+                apply(prefetch_to_device(gpu_device, self.batch_size))
+
+            train_dataset_iterator = train_dataset.make_one_shot_iterator()
+            test_dataset_iterator = test_dataset.make_one_shot_iterator()
 
         self.x_real, label_org, label_fix_list = train_dataset_iterator.get_next() # Input image / Original domain labels
         label_trg = tf.random_shuffle(label_org) # Target domain labels

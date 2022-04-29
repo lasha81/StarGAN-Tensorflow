@@ -8,7 +8,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--phase', type=str, default='train', help='train or test ?')
     parser.add_argument('--dataset', type=str, default='celebA', help='dataset_name')
-
     parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
     parser.add_argument('--iteration', type=int, default=10000, help='The number of training iterations')
     parser.add_argument('--batch_size', type=int, default=16, help='The size of batch size')
@@ -82,6 +81,9 @@ def check_args(args):
 def main():
     # parse arguments
     args = parse_args()
+
+    args.dataset = 'genregan'
+
     if args is None:
       exit()
 
@@ -102,6 +104,7 @@ def main():
         if args.phase == 'test' :
             gan.test()
             print(" [*] Test finished!")
+
 
 if __name__ == '__main__':
     main()

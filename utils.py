@@ -3,6 +3,8 @@ import numpy as np
 import os
 from scipy import misc
 
+import imageio
+
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import random
@@ -18,6 +20,7 @@ class ImageData:
         self.data_path = os.path.join(data_path, 'train')
         check_folder(self.data_path)
         self.lines = open(os.path.join(data_path, 'list_attr_celeba.txt'), 'r').readlines()
+
 
         self.train_dataset = []
         self.train_dataset_label = []
@@ -72,7 +75,7 @@ class ImageData:
                 else :
                     label.append(0.0)
 
-            if i < 2000 :
+            if i < 5 :
                 self.test_dataset.append(filename)
                 self.test_dataset_label.append(label)
             else :
@@ -132,7 +135,8 @@ def merge(images, size):
 
 
 def imsave(images, size, path):
-    return scipy.misc.imsave(path, merge(images, size))
+    #return scipy.misc.imsave(path, merge(images, size))
+    return imageio.imwrite(path, merge(images, size))
 
 def inverse_transform(images):
     return (images+1.)/2.
@@ -159,7 +163,7 @@ def create_labels(c_org, selected_attrs=None):
             hair_color_indices.append(i)
 
     c_trg_list = []
-
+    #print(selected_attrs)
     for i in range(len(selected_attrs)):
         c_trg = c_org.copy()
 
@@ -176,3 +180,74 @@ def create_labels(c_org, selected_attrs=None):
     c_trg_list = np.transpose(c_trg_list, axes=[1, 0, 2]) # [c_dim, bs, ch]
 
     return c_trg_list
+
+
+class MusicData:
+
+    def __init__(self, load_size, channels, data_path, selected_attrs, augment_flag=False):
+        self.load_size = load_size
+        self.channels = channels
+        self.augment_flag = augment_flag
+        self.selected_attrs = selected_attrs
+
+        self.data_path = os.path.join(data_path, 'train')
+        check_folder(self.data_path)
+        self.lines = open(os.path.join(data_path, 'list_attr_genre.txt'), 'r').readlines()
+
+
+        self.train_dataset = []
+        self.train_dataset_label = []
+        self.train_dataset_fix_label = []
+
+        self.test_dataset = []
+        self.test_dataset_label = []
+        self.test_dataset_fix_label = []
+
+        self.attr2idx = {}
+        self.idx2attr = {}
+
+    def midi_processing(self, filename, label, fix_label):
+        f = tf.read_file(filename)
+        npy = np.load(f) * 1.  # 64 * 84 * 1
+        npy = tf.expand_dims(npy, -1)
+        return npy, label, fix_label
+
+
+    def preprocess(self) :
+        all_attr_names = self.lines[1].split()
+        for i, attr_name in enumerate(all_attr_names) :
+            self.attr2idx[attr_name] = i
+            self.idx2attr[i] = attr_name
+
+
+        lines = self.lines[2:]
+        random.seed(1234)
+        random.shuffle(lines)
+
+        for i, line in enumerate(lines) :
+            split = line.split()
+            filename = os.path.join(self.data_path, split[0])
+            values = split[1:]
+
+            label = []
+
+            for attr_name in self.selected_attrs :
+                idx = self.attr2idx[attr_name]
+
+                if values[idx] == '1' :
+                    label.append(1.0)
+                else :
+                    label.append(0.0)
+
+            if i < 5 :
+                self.test_dataset.append(filename)
+                self.test_dataset_label.append(label)
+            else :
+                self.train_dataset.append(filename)
+                self.train_dataset_label.append(label)
+            # ['./dataset/celebA/train/019932.jpg', [1, 0, 0, 0, 1]]
+
+        self.test_dataset_fix_label = create_labels(self.test_dataset_label, self.selected_attrs)
+        self.train_dataset_fix_label = create_labels(self.train_dataset_label, self.selected_attrs)
+
+        print('\n Finished preprocessing the CelebA dataset...')
